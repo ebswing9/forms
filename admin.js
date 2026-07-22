@@ -280,6 +280,8 @@ function renderStudentList() {
 
         const row = document.createElement("div");
         row.className = "student-row";
+        row.style.cursor = "pointer";
+        row.addEventListener("click", () => openStudentResponseModal(id));
 
         const idSpan = document.createElement("span");
         idSpan.innerText = `#${id}`;
@@ -294,6 +296,57 @@ function renderStudentList() {
     }
 
     updateSubmitCountLabel(submittedCount);
+}
+
+/* =========================
+   학생 개별 응답 모달
+========================= */
+function openStudentResponseModal(studentId) {
+    const modal = document.getElementById("student-response-modal");
+    const title = document.getElementById("student-response-title");
+    const body = document.getElementById("student-response-body");
+
+    title.innerText = `#${studentId} 번 응답`;
+    body.innerHTML = "";
+
+    const student = cachedStudents[studentId];
+    if (!student || student.submitted !== true) {
+        body.innerHTML = `<p class="hint-text">아직 제출하지 않았습니다.</p>`;
+        modal.classList.remove("hidden");
+        return;
+    }
+
+    const qList = getSortedQuestionList();
+    const myAnswers = cachedResponses[studentId] || {};
+
+    if (qList.length === 0) {
+        body.innerHTML = `<p class="hint-text">등록된 질문이 없습니다.</p>`;
+        modal.classList.remove("hidden");
+        return;
+    }
+
+    const ul = document.createElement("ul");
+    ul.className = "my-response-list";
+
+    qList.forEach((q, idx) => {
+        const answer = myAnswers[q.qid];
+        const li = document.createElement("li");
+        li.innerHTML = `<div class="q-text">${idx + 1}. ${escapeHtmlAdmin(q.text)}</div><div class="q-answer">${answer ? escapeHtmlAdmin(answer) : "(응답 없음)"}</div>`;
+        ul.appendChild(li);
+    });
+
+    body.appendChild(ul);
+    modal.classList.remove("hidden");
+}
+
+document.getElementById("btn-close-student-response").addEventListener("click", () => {
+    document.getElementById("student-response-modal").classList.add("hidden");
+});
+
+function escapeHtmlAdmin(str) {
+    const div = document.createElement("div");
+    div.innerText = str;
+    return div.innerHTML;
 }
 
 function updateSubmitCountLabel(submittedCount) {
