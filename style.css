@@ -1,0 +1,346 @@
+/* =========================
+   기본 설정
+========================= */
+* {
+  box-sizing: border-box;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #EAF6FF;
+  color: #22303B;
+}
+
+.view {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+
+/* =========================
+   카드 UI
+========================= */
+
+.card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  width: 350px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.card.wide {
+  width: 650px;
+  max-width: 100%;
+}
+
+
+/* =========================
+   입력 / 버튼
+========================= */
+
+input, select {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  border: 1px solid #BEE3F8;
+  border-radius: 6px;
+  background: #F7FBFE;
+  font-size: 14px;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 6px;
+  background: #BEE3F8;
+  color: #1E4E70;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+button:hover {
+  background: #9ED2F0;
+}
+
+button.secondary {
+  background: #E3EBF1;
+  color: #45607A;
+}
+
+button.secondary:hover {
+  background: #CBDCE8;
+}
+
+.error-text {
+  color: red;
+  font-size: 13px;
+}
+
+.icon-inline {
+  width: 20px;
+  height: 20px;
+  vertical-align: -4px;
+  margin-right: 6px;
+  stroke: currentColor;
+  flex-shrink: 0;
+}
+
+.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #45607A;
+  margin-top: 10px;
+  margin-bottom: 2px;
+  text-align: left;
+}
+
+.hint-text {
+  font-size: 12px;
+  color: #5A7386;
+  text-align: left;
+  margin: 4px 0;
+}
+
+
+/* =========================
+   질문 블록 (학생 응답 화면)
+========================= */
+
+.question-block {
+  text-align: left;
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #EAF1F6;
+}
+
+.question-block:last-of-type {
+  border-bottom: none;
+}
+
+.question-title {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  color: #22303B;
+}
+
+/* 서술형 답변 입력란 - 카드형 텍스트 영역 느낌으로 다듬음 */
+.question-block textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 14px;
+  margin: 0;
+  border: 1.5px solid #BEE3F8;
+  border-radius: 10px;
+  background: #F7FBFE;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #22303B;
+  resize: vertical;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.question-block textarea::placeholder {
+  color: #A9BCC9;
+}
+
+.question-block textarea:hover {
+  border-color: #9ED2F0;
+}
+
+.question-block textarea:focus {
+  outline: none;
+  border-color: #5AB0E0;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(90, 176, 224, 0.15);
+}
+
+
+/* =========================
+   객관식 카드 (선택형 질문)
+========================= */
+
+.choice-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.choice-card {
+  background: white;
+  border: 2px solid #BEE3F8;
+  border-radius: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: transform 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.choice-card:hover {
+  transform: scale(1.01);
+  border-color: #5AB0E0;
+  background: #F0F9FF;
+}
+
+.choice-card.selected {
+  background-color: #D7F4E5;
+  border-color: #10b981;
+  color: #12794F;
+  font-weight: 600;
+}
+
+
+/* =========================
+   결과 화면 (내 응답 목록)
+========================= */
+
+.my-response-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  text-align: left;
+}
+
+.my-response-list li {
+  background: #EAF6FF;
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.my-response-list .q-text {
+  font-weight: 600;
+  font-size: 13px;
+  color: #1E4E70;
+}
+
+.my-response-list .q-answer {
+  margin-top: 6px;
+  color: #45607A;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+
+/* =========================
+   관리자 패널
+========================= */
+
+.panel {
+  margin-top: 20px;
+  padding: 15px;
+  background: #F7FBFE;
+  border-radius: 8px;
+  text-align: left;
+  border: 1px solid #D9EEFB;
+}
+
+.panel h3 {
+  margin-top: 0;
+}
+
+.panel textarea {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  border: 1px solid #BEE3F8;
+  border-radius: 6px;
+  background: #F7FBFE;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+#student-list, #questions-admin-list {
+  font-size: 13px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.student-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 4px;
+  border-top: 1px solid #EAF1F6;
+  gap: 8px;
+}
+
+.student-row:first-child {
+  border-top: none;
+}
+
+.status-badge {
+  display: inline-block;
+  min-width: 70px;
+  text-align: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.status-offline {
+  background: #FBE4E4;
+  color: #B3261E;
+}
+
+.status-online {
+  background: #BEE3F8;
+  color: #1E4E70;
+}
+
+.status-done {
+  background: #D7F4E5;
+  color: #12794F;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.toggle-row input {
+  width: auto;
+  margin: 0;
+}
+
+.item-status-box {
+  padding: 10px 4px;
+  border-top: 1px solid #EAF1F6;
+}
+
+.item-status-box:first-child {
+  border-top: none;
+}
+
+.item-status-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.item-status-names {
+  font-size: 12px;
+  color: #5A7386;
+  line-height: 1.6;
+}
