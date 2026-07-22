@@ -259,7 +259,7 @@ function listenStudents() {
     db.ref(`${PATH.STUDENTS}`).on("value", (snap) => {
         cachedStudents = snap.val() || {};
         renderStudentList();
-        renderResultsSummary();
+
     });
 }
 
