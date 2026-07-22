@@ -88,7 +88,6 @@ function listenConfig() {
         updateSettingsInputsFromConfig();
         updateStudentCountInputFromConfig();
         updateSubmitCountLabel();
-        renderResultsSummary();
     });
 }
 
@@ -109,7 +108,6 @@ function listenQuestions() {
     db.ref(`${PATH.QUESTIONS}`).on("value", (snap) => {
         cachedQuestions = snap.val() || {};
         renderQuestionsAdminList();
-        renderResultsSummary();
     });
 }
 
@@ -318,54 +316,8 @@ function updateSubmitCountLabel(submittedCount) {
 function listenResponses() {
     db.ref(`${PATH.RESPONSES}`).on("value", (snap) => {
         cachedResponses = snap.val() || {};
-        renderResultsSummary();
     });
 }
-
-/* =========================
-   항목별 응답 요약 (화면 표시, 번호순 + 미제출 공란 포함)
-========================= */
-function renderResultsSummary() {
-    const container = document.getElementById("results-container");
-    if (!container || !currentConfig) return;
-
-    container.innerHTML = "";
-
-    const qList = getSortedQuestionList();
-    if (qList.length === 0) {
-        container.innerHTML = `<p class="hint-text">등록된 질문이 없습니다.</p>`;
-        return;
-    }
-
-    const studentCount = currentConfig.studentCount || 0;
-
-    qList.forEach((q, idx) => {
-        const box = document.createElement("div");
-        box.className = "item-status-box";
-
-        let answeredCount = 0;
-        const lines = [];
-        for (let sid = 1; sid <= studentCount; sid++) {
-            const answer = cachedResponses[sid] ? cachedResponses[sid][q.qid] : undefined;
-            if (answer !== undefined && answer !== "") answeredCount++;
-            lines.push(`#${sid}: ${answer !== undefined && answer !== "" ? answer : "(미제출)"}`);
-        }
-
-        const title = document.createElement("div");
-        title.className = "item-status-title";
-        title.innerText = `${idx + 1}. ${q.text} (${answeredCount}/${studentCount}명 응답)`;
-        box.appendChild(title);
-
-        const namesLine = document.createElement("div");
-        namesLine.className = "item-status-names";
-        namesLine.style.whiteSpace = "pre-line";
-        namesLine.innerText = lines.join("\n");
-        box.appendChild(namesLine);
-
-        container.appendChild(box);
-    });
-}
-
 /* =========================
    CSV 다운로드 - 항목별 정리
    형식: 질문 구간별로 번호,답변 나열 (1~studentCount 전부, 미제출 공란)

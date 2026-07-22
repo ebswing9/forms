@@ -45,7 +45,8 @@ const STUDENT_STATE = {
 // ❓ 질문 유형
 // ==========================
 const QUESTION_TYPE = {
-  TEXT: "text",     // 서술형
+  SHORT: "short",   // 단답형 (한 줄)
+  TEXT: "text",     // 서술형 (여러 줄)
   CHOICE: "choice"  // 객관식
 };
 
@@ -106,7 +107,7 @@ function validateQuestion({ type, text, choices }) {
     if (!Array.isArray(choices) || choices.length < 2) {
       return "선택지를 2개 이상 입력하세요.";
     }
-  } else if (type !== QUESTION_TYPE.TEXT) {
+  } else if (type !== QUESTION_TYPE.TEXT && type !== QUESTION_TYPE.SHORT) {
     return "질문 유형이 올바르지 않습니다.";
   }
   return null;

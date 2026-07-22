@@ -36,7 +36,8 @@
 
       <label class="field-label" style="margin-top:16px;">질문 유형</label>
       <select id="new-q-type" style="width:100%; padding:10px; margin:8px 0; border:1px solid #BEE3F8; border-radius:6px; background:#F7FBFE;">
-        <option value="text">서술형 (자유롭게 작성)</option>
+        <option value="short">단답형 (한 줄로 짧게 작성)</option>
+        <option value="text">서술형 (자유롭게 여러 줄 작성)</option>
         <option value="choice">객관식 (선택지 중 고르기)</option>
       </select>
 
@@ -79,12 +80,12 @@
       <div id="student-list"></div>
     </div>
 
-    <!-- 항목별 응답 요약 -->
+    <!-- 응답 결과 다운로드 -->
     <div class="panel">
-      <h3><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="M4 6h.01"/><path d="M4 12h.01"/><path d="M4 18h.01"/></svg>항목별 응답 요약 (번호순)</h3>
+      <h3><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="M4 6h.01"/><path d="M4 12h.01"/><path d="M4 18h.01"/></svg>응답 결과 다운로드</h3>
+      <p class="hint-text">항목별 또는 학생별로 정리된 CSV(엑셀)을 다운로드합니다. 미제출 학생도 번호순으로 함께 표시됩니다.</p>
       <button id="btn-download-by-item-csv" class="secondary">항목별 CSV 다운로드</button>
       <button id="btn-download-by-student-csv" class="secondary">학생별 CSV 다운로드</button>
-      <div id="results-container" style="margin-top:12px;"></div>
     </div>
 
     <!-- 학생 관리 (자주 안 쓰는 기능이라 접어둠) -->

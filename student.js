@@ -161,7 +161,13 @@ function renderQuestions() {
         title.innerText = `${idx + 1}. ${q.text}`;
         block.appendChild(title);
 
-        if (q.type === QUESTION_TYPE.TEXT) {
+  if (q.type === QUESTION_TYPE.SHORT) {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.dataset.qid = q.qid;
+            input.placeholder = "답변을 입력하세요";
+            block.appendChild(input);
+        } else if (q.type === QUESTION_TYPE.TEXT) {
             const textarea = document.createElement("textarea");
             textarea.rows = 3;
             textarea.dataset.qid = q.qid;
@@ -204,16 +210,18 @@ document.getElementById("btn-submit").addEventListener("click", async () => {
     const error = document.getElementById("submit-error");
     error.innerText = "";
 
-    const answers = {};
+const answers = {};
     for (const q of questions) {
-        if (q.type === QUESTION_TYPE.TEXT) {
+        if (q.type === QUESTION_TYPE.SHORT) {
+            const input = document.querySelector(`input[data-qid="${q.qid}"]`);
+            answers[q.qid] = (input?.value || "").trim();
+        } else if (q.type === QUESTION_TYPE.TEXT) {
             const textarea = document.querySelector(`textarea[data-qid="${q.qid}"]`);
             answers[q.qid] = (textarea?.value || "").trim();
         } else if (q.type === QUESTION_TYPE.CHOICE) {
             answers[q.qid] = selectedChoices[q.qid] || "";
         }
     }
-
     // 이미 제출했는지 재확인
     const snap = await db.ref(`${PATH.STUDENTS}/${myId}`).once("value");
     const data = snap.val();
