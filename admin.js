@@ -85,20 +85,57 @@ function listenConfig() {
         currentConfig = snap.val();
         if (!currentConfig) return;
 
+        updateModeInputFromConfig();
         updateSettingsInputsFromConfig();
         updateStudentCountInputFromConfig();
         updateSubmitCountLabel();
+        toggleQuizPanels();
+        renderQuizSummary();
     });
 }
 
 /* =========================
-   질문 유형(서술형/객관식)에 따라 선택지 입력란 표시
+   사이트 모드(설문/퀴즈)
+========================= */
+function updateModeInputFromConfig() {
+    const select = document.getElementById("site-mode-select");
+    if (document.activeElement !== select) {
+        select.value = currentConfig.mode || SITE_MODE.SURVEY;
+    }
+    // 질문 유형 select에서 퀴즈 모드면 서술형 옵션 숨김
+    const textOption = document.querySelector('#new-q-type option[value="text"]');
+    if (textOption) {
+        textOption.style.display = currentConfig.mode === SITE_MODE.QUIZ ? "none" : "block";
+    }
+    toggleCorrectAnswerRow();
+}
+
+function toggleQuizPanels() {
+    const isQuiz = currentConfig.mode === SITE_MODE.QUIZ;
+    document.getElementById("quiz-summary-panel").style.display = isQuiz ? "block" : "none";
+    document.getElementById("show-score-row").style.display = isQuiz ? "flex" : "none";
+}
+
+document.getElementById("btn-save-mode").addEventListener("click", async () => {
+    const mode = document.getElementById("site-mode-select").value;
+    await db.ref(`${PATH.CONFIG}/mode`).set(mode);
+    alert("모드가 저장되었습니다.");
+});
+
+/* =========================
+   질문 유형에 따라 선택지/정답 입력란 표시
 ========================= */
 function setupQuestionTypeUI() {
-    document.getElementById("new-q-type").addEventListener("change", (e) => {
-        document.getElementById("choices-row").style.display =
-            e.target.value === QUESTION_TYPE.CHOICE ? "block" : "none";
-    });
+    document.getElementById("new-q-type").addEventListener("change", toggleCorrectAnswerRow);
+}
+
+function toggleCorrectAnswerRow() {
+    const type = document.getElementById("new-q-type").value;
+    document.getElementById("choices-row").style.display =
+        type === QUESTION_TYPE.CHOICE ? "block" : "none";
+
+    const isQuiz = currentConfig && currentConfig.mode === SITE_MODE.QUIZ;
+    document.getElementById("correct-answer-row").classList.toggle("hidden", !isQuiz);
 }
 
 /* =========================
@@ -108,6 +145,7 @@ function listenQuestions() {
     db.ref(`${PATH.QUESTIONS}`).on("value", (snap) => {
         cachedQuestions = snap.val() || {};
         renderQuestionsAdminList();
+        renderQuizSummary();
     });
 }
 
@@ -134,8 +172,11 @@ function renderQuestionsAdminList() {
         let typeLabel = "서술형";
         if (q.type === QUESTION_TYPE.CHOICE) typeLabel = "객관식";
         else if (q.type === QUESTION_TYPE.SHORT) typeLabel = "단답형";
+
+        const correctInfo = q.correctAnswer ? ` / 정답: ${q.correctAnswer}` : "";
+
         const nameSpan = document.createElement("span");
-        nameSpan.innerText = `${idx + 1}. ${q.text} (${typeLabel})`;
+        nameSpan.innerText = `${idx + 1}. ${q.text} (${typeLabel})${correctInfo}`;
 
         const delBtn = document.createElement("button");
         delBtn.className = "secondary";
@@ -155,7 +196,6 @@ async function deleteQuestion(qid) {
     const ok = confirm("이 질문을 삭제하시겠습니까?\n이 질문에 대한 기존 응답도 함께 삭제됩니다.");
     if (!ok) return;
 
-    // 이 질문에 대한 학생들의 응답도 함께 제거
     const responsesSnap = await db.ref(`${PATH.RESPONSES}`).once("value");
     const responses = responsesSnap.val() || {};
     const updates = {};
@@ -173,6 +213,7 @@ document.getElementById("btn-add-question").addEventListener("click", async () =
     const type = document.getElementById("new-q-type").value;
     const text = document.getElementById("new-q-text").value.trim();
     const choicesRaw = document.getElementById("new-q-choices").value.trim();
+    const correctAnswer = document.getElementById("new-q-correct").value.trim();
     const status = document.getElementById("question-status");
     status.innerText = "";
 
@@ -181,7 +222,8 @@ document.getElementById("btn-add-question").addEventListener("click", async () =
         choices = choicesRaw.split(",").map(s => s.trim()).filter(s => s.length > 0);
     }
 
-    const error = validateQuestion({ type, text, choices });
+    const mode = currentConfig ? currentConfig.mode : SITE_MODE.SURVEY;
+    const error = validateQuestion({ mode, type, text, choices, correctAnswer });
     if (error) {
         status.innerText = error;
         return;
@@ -191,31 +233,45 @@ document.getElementById("btn-add-question").addEventListener("click", async () =
     const maxOrder = qList.length > 0 ? Math.max(...qList.map(q => q.order || 0)) : 0;
 
     const qid = generateQuestionId();
-    await db.ref(`${PATH.QUESTIONS}/${qid}`).set({
+    const newQuestion = {
         order: maxOrder + 1,
         type,
         text,
         choices: type === QUESTION_TYPE.CHOICE ? choices : null
-    });
+    };
+    if (mode === SITE_MODE.QUIZ) {
+        newQuestion.correctAnswer = correctAnswer;
+    }
+
+    await db.ref(`${PATH.QUESTIONS}/${qid}`).set(newQuestion);
 
     document.getElementById("new-q-text").value = "";
     document.getElementById("new-q-choices").value = "";
+    document.getElementById("new-q-correct").value = "";
     status.innerText = "";
 });
 
 /* =========================
-   설문 설정 (응답 재열람 허용 여부)
+   설문 설정 (응답 재열람 허용, 점수 공개 여부)
 ========================= */
 function updateSettingsInputsFromConfig() {
     const toggle = document.getElementById("allow-view-toggle");
     if (document.activeElement !== toggle) {
         toggle.checked = currentConfig.allowViewOwnResponse === true;
     }
+    const scoreToggle = document.getElementById("show-score-toggle");
+    if (document.activeElement !== scoreToggle) {
+        scoreToggle.checked = currentConfig.showScoreToStudent === true;
+    }
 }
 
 document.getElementById("btn-save-settings").addEventListener("click", async () => {
     const checked = document.getElementById("allow-view-toggle").checked;
-    await db.ref(`${PATH.CONFIG}/allowViewOwnResponse`).set(checked);
+    const showScore = document.getElementById("show-score-toggle").checked;
+    await db.ref(`${PATH.CONFIG}`).update({
+        allowViewOwnResponse: checked,
+        showScoreToStudent: showScore
+    });
     document.getElementById("settings-status").innerText = "저장되었습니다.";
 });
 
@@ -229,12 +285,12 @@ document.getElementById("btn-start").addEventListener("click", async () => {
         return;
     }
     await db.ref(`${PATH.GAME}`).update({ state: GAME_STATE.OPEN });
-    alert("설문을 시작했습니다.");
+    alert("시작했습니다.");
 });
 
 document.getElementById("btn-end").addEventListener("click", async () => {
     await db.ref(`${PATH.GAME}`).update({ state: GAME_STATE.END });
-    alert("설문을 종료했습니다.");
+    alert("종료했습니다.");
 });
 
 document.getElementById("btn-reset-responses").addEventListener("click", async () => {
@@ -246,6 +302,8 @@ document.getElementById("btn-reset-responses").addEventListener("click", async (
     const updates = {};
     for (const id in students) {
         updates[`${PATH.STUDENTS}/${id}/submitted`] = false;
+        updates[`${PATH.STUDENTS}/${id}/score`] = null;
+        updates[`${PATH.STUDENTS}/${id}/totalScorable`] = null;
     }
     updates[`${PATH.RESPONSES}`] = null;
     updates[`${PATH.GAME}/state`] = GAME_STATE.WAIT;
@@ -261,7 +319,7 @@ function listenStudents() {
     db.ref(`${PATH.STUDENTS}`).on("value", (snap) => {
         cachedStudents = snap.val() || {};
         renderStudentList();
-
+        renderQuizSummary();
     });
 }
 
@@ -290,7 +348,11 @@ function renderStudentList() {
 
         const statusSpan = document.createElement("span");
         statusSpan.className = `status-badge ${submitted ? "status-done" : "status-offline"}`;
-        statusSpan.innerText = submitted ? "제출완료" : "미제출";
+        let statusText = submitted ? "제출완료" : "미제출";
+        if (submitted && currentConfig && currentConfig.mode === SITE_MODE.QUIZ && s.totalScorable) {
+            statusText += ` (${s.score}/${s.totalScorable})`;
+        }
+        statusSpan.innerText = statusText;
 
         row.appendChild(idSpan);
         row.appendChild(statusSpan);
@@ -298,6 +360,20 @@ function renderStudentList() {
     }
 
     updateSubmitCountLabel(submittedCount);
+}
+
+function updateSubmitCountLabel(submittedCount) {
+    const total = currentConfig ? currentConfig.studentCount : 0;
+
+    let count = submittedCount;
+    if (count === undefined) {
+        count = 0;
+        for (const id in cachedStudents) {
+            if (cachedStudents[id].submitted === true) count++;
+        }
+    }
+
+    document.getElementById("submit-count").innerText = `${count} / ${total}`;
 }
 
 /* =========================
@@ -327,13 +403,28 @@ function openStudentResponseModal(studentId) {
         return;
     }
 
+    if (currentConfig && currentConfig.mode === SITE_MODE.QUIZ && student.totalScorable) {
+        const scoreLine = document.createElement("p");
+        scoreLine.innerHTML = `<strong>점수: ${student.score} / ${student.totalScorable}</strong>`;
+        body.appendChild(scoreLine);
+    }
+
     const ul = document.createElement("ul");
     ul.className = "my-response-list";
 
     qList.forEach((q, idx) => {
         const answer = myAnswers[q.qid];
         const li = document.createElement("li");
-        li.innerHTML = `<div class="q-text">${idx + 1}. ${escapeHtmlAdmin(q.text)}</div><div class="q-answer">${answer ? escapeHtmlAdmin(answer) : "(응답 없음)"}</div>`;
+
+        let extra = "";
+        if (q.correctAnswer) {
+            const correct = isAnswerCorrect(q, answer);
+            extra = correct
+                ? ` <span class="answer-correct">(정답)</span>`
+                : ` <span class="answer-wrong">(오답, 정답: ${escapeHtmlAdmin(q.correctAnswer)})</span>`;
+        }
+
+        li.innerHTML = `<div class="q-text">${idx + 1}. ${escapeHtmlAdmin(q.text)}</div><div class="q-answer">${answer ? escapeHtmlAdmin(answer) : "(응답 없음)"}${extra}</div>`;
         ul.appendChild(li);
     });
 
@@ -351,20 +442,6 @@ function escapeHtmlAdmin(str) {
     return div.innerHTML;
 }
 
-function updateSubmitCountLabel(submittedCount) {
-    const total = currentConfig ? currentConfig.studentCount : 0;
-
-    let count = submittedCount;
-    if (count === undefined) {
-        count = 0;
-        for (const id in cachedStudents) {
-            if (cachedStudents[id].submitted === true) count++;
-        }
-    }
-
-    document.getElementById("submit-count").innerText = `${count} / ${total}`;
-}
-
 /* =========================
    응답 실시간 감시
 ========================= */
@@ -373,9 +450,57 @@ function listenResponses() {
         cachedResponses = snap.val() || {};
     });
 }
+
+/* =========================
+   퀴즈 채점 결과 요약 (문항별 정답률, 반 평균)
+========================= */
+function renderQuizSummary() {
+    const container = document.getElementById("quiz-summary-container");
+    if (!container || !currentConfig) return;
+
+    if (currentConfig.mode !== SITE_MODE.QUIZ) {
+        container.innerHTML = "";
+        return;
+    }
+
+    const qList = getSortedQuestionList().filter(q => q.correctAnswer);
+    if (qList.length === 0) {
+        container.innerHTML = `<p class="hint-text">정답이 설정된 질문이 없습니다.</p>`;
+        return;
+    }
+
+    const submittedIds = Object.keys(cachedStudents).filter(id => cachedStudents[id].submitted === true);
+
+    container.innerHTML = "";
+
+    // 문항별 정답률
+    qList.forEach((q, idx) => {
+        let correctCount = 0;
+        submittedIds.forEach(id => {
+            const answer = cachedResponses[id] ? cachedResponses[id][q.qid] : undefined;
+            if (isAnswerCorrect(q, answer)) correctCount++;
+        });
+
+        const box = document.createElement("div");
+        box.className = "item-status-box";
+        const rate = submittedIds.length > 0 ? Math.round((correctCount / submittedIds.length) * 100) : 0;
+        box.innerHTML = `<div class="item-status-title">${idx + 1}. ${escapeHtmlAdmin(q.text)}</div><div class="item-status-names">정답률 ${rate}% (${correctCount}/${submittedIds.length}명)</div>`;
+        container.appendChild(box);
+    });
+
+    // 반 평균
+    if (submittedIds.length > 0) {
+        const totalScore = submittedIds.reduce((sum, id) => sum + (cachedStudents[id].score || 0), 0);
+        const avg = (totalScore / submittedIds.length).toFixed(1);
+        const avgBox = document.createElement("div");
+        avgBox.className = "item-status-box";
+        avgBox.innerHTML = `<div class="item-status-title">반 평균 점수</div><div class="item-status-names">${avg} / ${qList.length}점 (제출자 ${submittedIds.length}명 기준)</div>`;
+        container.appendChild(avgBox);
+    }
+}
+
 /* =========================
    CSV 다운로드 - 항목별 정리
-   형식: 질문 구간별로 번호,답변 나열 (1~studentCount 전부, 미제출 공란)
 ========================= */
 document.getElementById("btn-download-by-item-csv").addEventListener("click", () => {
     if (!currentConfig) return;
@@ -391,12 +516,18 @@ document.getElementById("btn-download-by-item-csv").addEventListener("click", ()
 
     qList.forEach((q, idx) => {
         rows.push([csvField(`${idx + 1}. ${q.text}`)].join(","));
-        rows.push(["번호", "답변"].join(","));
+        const header = q.correctAnswer ? ["번호", "답변", "정답여부"] : ["번호", "답변"];
+        rows.push(header.join(","));
         for (let sid = 1; sid <= studentCount; sid++) {
             const answer = cachedResponses[sid] ? cachedResponses[sid][q.qid] : "";
-            rows.push([sid, csvField(answer || "")].join(","));
+            const row = [sid, csvField(answer || "")];
+            if (q.correctAnswer) {
+                const correct = answer ? isAnswerCorrect(q, answer) : null;
+                row.push(correct === null ? "" : (correct ? "정답" : "오답"));
+            }
+            rows.push(row.join(","));
         }
-        rows.push(""); // 질문 사이 빈 줄
+        rows.push("");
     });
 
     downloadCsv(rows.join("\n"), "설문결과_항목별.csv");
@@ -404,7 +535,6 @@ document.getElementById("btn-download-by-item-csv").addEventListener("click", ()
 
 /* =========================
    CSV 다운로드 - 학생별 정리
-   형식: 행=학생번호(1~studentCount 전부), 열=질문들
 ========================= */
 document.getElementById("btn-download-by-student-csv").addEventListener("click", () => {
     if (!currentConfig) return;
@@ -416,7 +546,9 @@ document.getElementById("btn-download-by-student-csv").addEventListener("click",
     }
 
     const studentCount = currentConfig.studentCount || 0;
+    const isQuiz = currentConfig.mode === SITE_MODE.QUIZ;
     const header = ["번호", ...qList.map((q, idx) => csvField(`${idx + 1}. ${q.text}`))];
+    if (isQuiz) header.push("점수");
     const rows = [header.join(",")];
 
     for (let sid = 1; sid <= studentCount; sid++) {
@@ -425,6 +557,10 @@ document.getElementById("btn-download-by-student-csv").addEventListener("click",
             const answer = cachedResponses[sid] ? cachedResponses[sid][q.qid] : "";
             row.push(csvField(answer || ""));
         });
+        if (isQuiz) {
+            const s = cachedStudents[sid];
+            row.push(s && s.submitted ? `${s.score}/${s.totalScorable}` : "");
+        }
         rows.push(row.join(","));
     }
 

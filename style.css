@@ -390,3 +390,29 @@ button.secondary:hover {
 .modal-box .my-response-list {
   text-align: left;
 }
+
+/* =========================
+   퀴즈 채점 표시
+========================= */
+
+.score-box {
+  font-size: 1.1rem;
+  font-weight: 700;
+  background: #EAF6FF;
+  color: #1E4E70;
+  padding: 12px;
+  border-radius: 10px;
+  margin: 10px 0;
+}
+
+.answer-correct {
+  color: #12794F;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.answer-wrong {
+  color: #B3261E;
+  font-weight: 600;
+  font-size: 12px;
+}

@@ -6,7 +6,7 @@ let myData = null;
 let currentGame = null;
 let currentConfig = null;
 let questions = [];
-let selectedChoices = {}; // { qid: 선택한 값 } - 객관식 답변 임시 저장용
+let selectedChoices = {};
 
 /* =========================
    설정(config) 로드
@@ -18,12 +18,6 @@ async function loadConfig() {
         document.getElementById("student-id").placeholder = `번호 (1~${currentConfig.studentCount})`;
     }
 }
-
-/* =========================
-   실시간 접속 감지는 이번 사이트에서는 사용하지 않음
-   (요구사항: 실시간 접속 현황 불필요)
-   다만 status 필드 자체는 남겨두어, 필요시 나중에 재사용 가능하도록 함
-========================= */
 
 /* =========================
    화면 전환
@@ -103,7 +97,6 @@ function initListeners() {
         currentConfig = snap.val();
     });
 
-    // 게임 상태 감시
     db.ref(`${PATH.GAME}`).on("value", (snap) => {
         currentGame = snap.val();
         if (!currentGame) return;
@@ -122,7 +115,6 @@ function initListeners() {
         }
     });
 
-    // 내 데이터 감시
     db.ref(`${PATH.STUDENTS}/${myId}`).on("value", (snap) => {
         myData = snap.val();
     });
@@ -161,7 +153,7 @@ function renderQuestions() {
         title.innerText = `${idx + 1}. ${q.text}`;
         block.appendChild(title);
 
-  if (q.type === QUESTION_TYPE.SHORT) {
+        if (q.type === QUESTION_TYPE.SHORT) {
             const input = document.createElement("input");
             input.type = "text";
             input.dataset.qid = q.qid;
@@ -188,7 +180,6 @@ function renderQuestions() {
 
                 card.addEventListener("click", () => {
                     selectedChoices[q.qid] = choice;
-                    // 같은 질문의 다른 카드 선택 해제
                     choiceGrid.querySelectorAll(".choice-card").forEach(c => c.classList.remove("selected"));
                     card.classList.add("selected");
                 });
@@ -241,17 +232,43 @@ document.getElementById("btn-submit").addEventListener("click", async () => {
     }
 
     await db.ref(`${PATH.RESPONSES}/${myId}`).set(answers);
-    await db.ref(`${PATH.STUDENTS}/${myId}`).update({ submitted: true });
+
+    // 퀴즈 모드면 채점해서 점수 저장
+    const updates = { submitted: true };
+    if (currentConfig && currentConfig.mode === SITE_MODE.QUIZ) {
+        const scorable = questions.filter(q => q.correctAnswer);
+        let score = 0;
+        scorable.forEach(q => {
+            if (isAnswerCorrect(q, answers[q.qid])) score++;
+        });
+        updates.score = score;
+        updates.totalScorable = scorable.length;
+    }
+
+    await db.ref(`${PATH.STUDENTS}/${myId}`).update(updates);
 
     showResult();
 });
 
 /* =========================
-   결과 화면 (내 제출 내역, 재열람 허용 시에만 상세 표시)
+   결과 화면
 ========================= */
 async function showResult() {
     showView("result-view");
     document.getElementById("result-id").innerText = myId;
+
+    const scoreBox = document.getElementById("score-box");
+    scoreBox.innerHTML = "";
+    scoreBox.classList.add("hidden");
+
+    if (currentConfig && currentConfig.mode === SITE_MODE.QUIZ && currentConfig.showScoreToStudent) {
+        const snap = await db.ref(`${PATH.STUDENTS}/${myId}`).once("value");
+        const data = snap.val();
+        if (data && data.submitted && data.totalScorable) {
+            scoreBox.innerText = `점수: ${data.score} / ${data.totalScorable}`;
+            scoreBox.classList.remove("hidden");
+        }
+    }
 
     const container = document.getElementById("my-response-container");
     container.innerHTML = "";
@@ -284,7 +301,16 @@ async function showResult() {
     qList.forEach(q => {
         const li = document.createElement("li");
         const answer = myAnswers[q.qid] || "(응답 없음)";
-        li.innerHTML = `<div class="q-text">${escapeHtml(q.text)}</div><div class="q-answer">${escapeHtml(answer)}</div>`;
+
+        let extra = "";
+        if (currentConfig.mode === SITE_MODE.QUIZ && currentConfig.showScoreToStudent && q.correctAnswer) {
+            const correct = isAnswerCorrect(q, myAnswers[q.qid]);
+            extra = correct
+                ? ` <span class="answer-correct">(정답)</span>`
+                : ` <span class="answer-wrong">(오답, 정답: ${escapeHtml(q.correctAnswer)})</span>`;
+        }
+
+        li.innerHTML = `<div class="q-text">${escapeHtml(q.text)}</div><div class="q-answer">${escapeHtml(answer)}${extra}</div>`;
         ul.appendChild(li);
     });
 

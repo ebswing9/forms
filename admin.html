@@ -15,7 +15,7 @@
 <!-- 1. 관리자 로그인 -->
 <div id="admin-login-view" class="view">
   <div class="card">
-    <h2><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>관리자 로그인</h2>
+    <h2>관리자 로그인</h2>
     <input id="admin-pw" type="password" placeholder="관리자 비밀번호"/>
     <button id="btn-admin-login">로그인</button>
     <p id="admin-login-error" class="error-text"></p>
@@ -25,11 +25,23 @@
 <!-- 2. 관리자 패널 -->
 <div id="admin-view" class="view hidden">
   <div class="card wide">
-    <h2><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1"/><path d="M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1"/><path d="M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1"/><path d="M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1"/></svg>관리자 패널</h2>
+    <h2>관리자 패널</h2>
+
+    <!-- 사이트 모드 -->
+    <div class="panel">
+      <h3>사이트 모드</h3>
+      <label class="field-label">이 사이트를 어떤 용도로 쓸까요?</label>
+      <select id="site-mode-select" style="width:100%; padding:10px; margin:8px 0; border:1px solid #BEE3F8; border-radius:6px; background:#F7FBFE;">
+        <option value="survey">설문 (정답 없음, 자유 응답 수합)</option>
+        <option value="quiz">퀴즈 (정답 채점)</option>
+      </select>
+      <p class="hint-text">모드를 바꿔도 기존 질문/응답은 삭제되지 않습니다. 다만 퀴즈 모드에서는 서술형 질문을 새로 만들 수 없습니다.</p>
+      <button id="btn-save-mode">모드 저장</button>
+    </div>
 
     <!-- 질문 관리 -->
     <div class="panel">
-      <h3><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 11l3 3l8 -8"/><path d="M20 12v6a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h9"/></svg>질문 관리</h3>
+      <h3>질문 관리</h3>
 
       <label class="field-label">현재 등록된 질문</label>
       <div id="questions-admin-list"></div>
@@ -49,16 +61,25 @@
         <input id="new-q-choices" type="text" placeholder="예: 매우 좋음,좋음,보통,나쁨"/>
       </div>
 
+      <div id="correct-answer-row" class="hidden">
+        <label class="field-label">정답 (퀴즈 모드)</label>
+        <input id="new-q-correct" type="text" placeholder="객관식이면 선택지 중 하나를 정확히 입력"/>
+      </div>
+
       <button id="btn-add-question">질문 추가</button>
       <p id="question-status" class="error-text"></p>
     </div>
 
     <!-- 설문 설정 -->
     <div class="panel">
-      <h3><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M16.555 3.843l3.602 3.602a2.877 2.877 0 0 1 0 4.069l-2.643 2.643a2.877 2.877 0 0 1 -4.069 0l-.301 -.301l-6.558 6.558a2 2 0 0 1 -1.239 .578l-.175 .008h-1.172a1 1 0 0 1 -.993 -.883l-.007 -.117v-1.172a2 2 0 0 1 .467 -1.284l.119 -.13l.414 -.414h2v-2h2v-2l2.144 -2.144l-.301 -.301a2.877 2.877 0 0 1 0 -4.069l2.643 -2.643a2.877 2.877 0 0 1 4.069 0z"/><path d="M15 9h.01"/></svg>설문 설정</h3>
+      <h3>설문 설정</h3>
       <div class="toggle-row">
         <input id="allow-view-toggle" type="checkbox"/>
         <label for="allow-view-toggle">학생이 제출 후 본인 응답을 다시 볼 수 있게 허용</label>
+      </div>
+      <div class="toggle-row" id="show-score-row">
+        <input id="show-score-toggle" type="checkbox"/>
+        <label for="show-score-toggle">(퀴즈 모드) 학생에게 채점 점수 공개</label>
       </div>
       <button id="btn-save-settings">설정 저장</button>
       <p id="settings-status" class="hint-text"></p>
@@ -66,23 +87,29 @@
 
     <!-- 게임 제어 -->
     <div class="panel">
-      <h3><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 10a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M6 4v4"/><path d="M6 12v8"/><path d="M10 16a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M12 4v10"/><path d="M12 18v2"/><path d="M16 7a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M18 4v1"/><path d="M18 9v11"/></svg>설문 제어</h3>
-      <button id="btn-start"><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 4v16l13 -8l-13 -8"/></svg>시작</button>
-      <button id="btn-end"><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 5m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"/></svg>종료</button>
-      <button id="btn-reset-responses" class="secondary"><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>응답 초기화 (질문 유지, 재사용 가능)</button>
+      <h3>설문 제어</h3>
+      <button id="btn-start">시작</button>
+      <button id="btn-end">종료</button>
+      <button id="btn-reset-responses" class="secondary">응답 초기화 (질문 유지, 재사용 가능)</button>
       <p id="game-status-text" class="hint-text"></p>
     </div>
 
     <!-- 접속/제출 현황 -->
     <div class="panel">
-      <h3><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>제출 현황</h3>
+      <h3>제출 현황 (클릭하면 개별 응답 확인)</h3>
       <p id="submit-count">0 / 0</p>
       <div id="student-list"></div>
     </div>
 
+    <!-- 퀴즈 채점 결과 요약 -->
+    <div class="panel" id="quiz-summary-panel">
+      <h3>채점 결과 요약</h3>
+      <div id="quiz-summary-container"></div>
+    </div>
+
     <!-- 응답 결과 다운로드 -->
     <div class="panel">
-      <h3><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="M4 6h.01"/><path d="M4 12h.01"/><path d="M4 18h.01"/></svg>응답 결과 다운로드</h3>
+      <h3>응답 결과 다운로드</h3>
       <p class="hint-text">항목별 또는 학생별로 정리된 CSV(엑셀)을 다운로드합니다. 미제출 학생도 번호순으로 함께 표시됩니다.</p>
       <button id="btn-download-by-item-csv" class="secondary">항목별 CSV 다운로드</button>
       <button id="btn-download-by-student-csv" class="secondary">학생별 CSV 다운로드</button>
@@ -90,7 +117,7 @@
 
     <!-- 학생 관리 (자주 안 쓰는 기능이라 접어둠) -->
     <details class="panel">
-      <summary style="cursor:pointer; font-weight:bold; font-size:1rem;"><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0 -3 -3.85"/></svg>학생 관리 (학생 수 설정 및 명단 생성)</summary>
+      <summary style="cursor:pointer; font-weight:bold; font-size:1rem;">학생 관리 (학생 수 설정 및 명단 생성)</summary>
       <div style="margin-top:12px;">
         <label class="field-label">학생 수</label>
         <input id="student-count-input" type="number" min="1" placeholder="예: 29"/>
@@ -101,7 +128,7 @@
 
     <!-- 학생 비밀번호 일괄 관리 (자주 안 쓰는 기능이라 접어둠) -->
     <details class="panel">
-      <summary style="cursor:pointer; font-weight:bold; font-size:1rem;"><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2"/><path d="M8 11h8v7h-8l0 -7"/><path d="M8 15h8"/><path d="M11 11v7"/></svg>학생 비밀번호 일괄 관리</summary>
+      <summary style="cursor:pointer; font-weight:bold; font-size:1rem;">학생 비밀번호 일괄 관리</summary>
       <div style="margin-top:12px;">
         <button id="btn-download-csv" class="secondary">현재 비밀번호 CSV 다운로드</button>
         <input id="csv-upload" type="file" accept=".csv"/>
@@ -116,6 +143,7 @@
 <button id="btn-admin-logout" class="secondary">로그아웃</button>
   </div>
 </div>
+
 <!-- 학생 개별 응답 모달 -->
 <div id="student-response-modal" class="modal hidden">
   <div class="modal-box wide">
@@ -127,6 +155,5 @@
 
 <script src="firebase.js"></script>
 <script src="admin.js"></script>
-
 </body>
 </html>
