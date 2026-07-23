@@ -131,7 +131,9 @@ function renderQuestionsAdminList() {
         const row = document.createElement("div");
         row.className = "student-row";
 
-        const typeLabel = q.type === QUESTION_TYPE.CHOICE ? "객관식" : "서술형";
+        let typeLabel = "서술형";
+        if (q.type === QUESTION_TYPE.CHOICE) typeLabel = "객관식";
+        else if (q.type === QUESTION_TYPE.SHORT) typeLabel = "단답형";
         const nameSpan = document.createElement("span");
         nameSpan.innerText = `${idx + 1}. ${q.text} (${typeLabel})`;
 

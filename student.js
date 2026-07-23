@@ -210,7 +210,7 @@ document.getElementById("btn-submit").addEventListener("click", async () => {
     const error = document.getElementById("submit-error");
     error.innerText = "";
 
-const answers = {};
+    const answers = {};
     for (const q of questions) {
         if (q.type === QUESTION_TYPE.SHORT) {
             const input = document.querySelector(`input[data-qid="${q.qid}"]`);
@@ -222,6 +222,15 @@ const answers = {};
             answers[q.qid] = selectedChoices[q.qid] || "";
         }
     }
+
+    // 모든 질문에 답변이 채워져 있는지 확인 (공란 제출 방지)
+    const emptyQuestion = questions.find(q => !answers[q.qid]);
+    if (emptyQuestion) {
+        const idx = questions.indexOf(emptyQuestion) + 1;
+        error.innerText = `${idx}번 질문에 답변을 작성해주세요.`;
+        return;
+    }
+
     // 이미 제출했는지 재확인
     const snap = await db.ref(`${PATH.STUDENTS}/${myId}`).once("value");
     const data = snap.val();
