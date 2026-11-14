@@ -476,7 +476,7 @@ button.secondary:hover {
 ========================= */
 #admin-view {
   display: block;
-  padding: 0 0 60px;
+  padding: 0 0 120px;
   min-height: 100vh;
 }
 
@@ -641,7 +641,7 @@ button:disabled {
 ========================= */
 .toast {
   position: fixed;
-  bottom: 24px;
+  bottom: 90px;
   left: 50%;
   transform: translateX(-50%);
   background: #22303B;
@@ -667,6 +667,45 @@ button:disabled {
   .admin-main { padding: 4px 10px; }
   .tab-btn { font-size: 13px; }
   .bar-label { width: 38%; }
+}
+
+
+/* =========================
+   학생 선택 (체크박스) / 하단 요청 바
+========================= */
+.sel-check {
+  width: auto;
+  margin: 0 8px 0 0;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.sel-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.selection-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: white;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.12);
+}
+
+.selection-bar input {
+  flex: 1;
+  min-width: 160px;
+  margin: 0;
 }
 
   </style>
@@ -784,18 +823,14 @@ button:disabled {
         <p id="nudge-status" class="hint-text"></p>
       </div>
 
-      <div class="panel">
-        <h3>다시쓰기 요청</h3>
-        <p class="hint-text">설문이 진행 중일 때, 제출한 학생에게 팝업으로 "다시 수정해서 제출하세요"를 알립니다. 학생이 다시 제출하면 요청은 자동으로 해제돼요. (한 명에게만 보내려면 아래 제출 현황에서 학생을 눌러주세요)</p>
-        <label class="field-label">학생에게 보여줄 메시지 (비워두면 기본 문구)</label>
-        <textarea id="revision-message" rows="2" placeholder="예: 답변이 너무 짧아요. 50자 이상으로 다시 써주세요."></textarea>
-        <button id="btn-revision-short">글자 수 부족한 학생에게 보내기</button>
-        <button id="btn-revision-all" class="secondary">제출한 모든 학생에게 보내기</button>
-        <p id="revision-status" class="hint-text"></p>
-      </div>
-
-      <div class="panel">
+            <div class="panel">
         <h3>제출 현황 (학생을 누르면 개별 응답 확인)</h3>
+        <p class="hint-text">체크박스로 학생을 고르면 화면 아래에 '다시쓰기 요청' 바가 나타나요. (결과 탭의 답변 목록에서도 고를 수 있어요)</p>
+        <div class="sel-tools">
+          <button id="btn-sel-all" class="mini secondary">제출한 학생 모두 선택</button>
+          <button id="btn-sel-short" class="mini secondary">글자 수 부족한 학생 선택</button>
+          <button id="btn-sel-none" class="mini secondary">선택 해제</button>
+        </div>
         <div id="student-list"></div>
       </div>
 
@@ -812,6 +847,7 @@ button:disabled {
 
       <div class="panel">
         <h3>문항별 결과</h3>
+        <p class="hint-text">단답형·서술형 답변 옆 체크박스로 학생을 고르면, 화면 아래에 나타나는 바에서 다시쓰기 요청을 한 번에 보낼 수 있어요.</p>
         <div id="results-container"></div>
       </div>
 
@@ -904,6 +940,7 @@ button:disabled {
     <div id="student-response-body"></div>
     <button id="btn-modal-revision" class="hidden">이 학생에게 다시쓰기 요청</button>
     <button id="btn-modal-revision-cancel" class="secondary hidden">다시쓰기 요청 취소</button>
+    <button id="btn-modal-reset-student" class="secondary hidden">이 학생 응답 초기화</button>
     <button id="btn-close-student-response" class="secondary">닫기</button>
   </div>
 </div>
@@ -939,6 +976,15 @@ button:disabled {
   </div>
 </div>
 
+<!-- 선택한 학생에게 다시쓰기 요청 보내는 바 -->
+<div id="selection-bar" class="selection-bar hidden">
+  <span id="sel-count" class="bar-chip">0명 선택</span>
+  <input id="sel-message" type="text" placeholder="학생에게 보낼 메시지 (비워두면 기본 문구)"/>
+  <button id="btn-sel-send" class="mini">다시쓰기 요청 보내기</button>
+  <button id="btn-sel-reset" class="mini secondary">응답 초기화</button>
+  <button id="btn-sel-clear" class="mini secondary">선택 해제</button>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script src="firebase.js"></script>
@@ -957,6 +1003,7 @@ let adminInitialized = false;
 let modalStudentId = null;
 let editingQid = null;
 const openDetails = new Set();
+const selected = new Set(); // 다시쓰기 요청을 보내려고 체크한 학생 번호
 
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1136,12 +1183,17 @@ function listenGame() {
 }
 
 function renderAll() {
+    // 더 이상 '제출' 상태가 아닌 학생(초기화 등)은 선택에서 제외
+    const submittedNow = new Set(getSubmittedIds());
+    [...selected].forEach(id => { if (!submittedNow.has(id)) selected.delete(id); });
+
     renderStatusBar();
     renderQuestionsAdminList();
     renderStudentList();
     renderUnsubmitted();
     renderResults();
     renderQuizSummary();
+    refreshSelectionUI();
 }
 
 /* =========================
@@ -1537,7 +1589,14 @@ function renderStudentList() {
         row.addEventListener("click", () => openStudentResponseModal(id));
 
         const idSpan = document.createElement("span");
-        idSpan.innerText = `#${id}`;
+        if (submitted) {
+            idSpan.appendChild(makeSelCheck(id));
+        } else {
+            const spacer = document.createElement("span");
+            spacer.style.cssText = "display:inline-block;width:24px;";
+            idSpan.appendChild(spacer);
+        }
+        idSpan.appendChild(document.createTextNode(`#${id}`));
 
         let cls = "status-offline", text = "미접속";
         if (submitted) {
@@ -1610,7 +1669,7 @@ $("btn-nudge").addEventListener("click", async () => {
    진행·현황: 다시쓰기 요청
 ========================= */
 function getRevisionMessage() {
-    return $("revision-message").value.trim()
+    return $("sel-message").value.trim()
         || "선생님이 다시 확인해 보라고 하셨어요. 답변을 수정해서 다시 제출해주세요.";
 }
 
@@ -1630,23 +1689,86 @@ async function sendRevisionRequests(ids, message) {
     await db.ref().update(updates);
 }
 
-async function handleBulkRevision(ids, label) {
-    const status = $("revision-status");
-    if (ids.length === 0) {
-        status.innerText = `${label} 학생이 없습니다.`;
-        return;
-    }
-    if (!confirm(`${label} 학생 ${ids.length}명에게 다시쓰기 요청을 보낼까요?`)) return;
-    await sendRevisionRequests(ids, getRevisionMessage());
-    status.innerText = `✅ ${ids.length}명에게 요청을 보냈습니다.`;
+/* ----- 학생 선택 (체크박스) ----- */
+function makeSelCheck(id) {
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "sel-check";
+    cb.dataset.sid = id;
+    cb.checked = selected.has(id);
+    cb.addEventListener("click", (e) => e.stopPropagation());
+    cb.addEventListener("change", () => {
+        if (cb.checked) selected.add(id);
+        else selected.delete(id);
+        refreshSelectionUI();
+    });
+    return cb;
 }
 
-$("btn-revision-short").addEventListener("click", () =>
-    handleBulkRevision(getSubmittedIds().filter(id => isBelowMinLength(id)), "글자 수가 부족한")
-);
-$("btn-revision-all").addEventListener("click", () =>
-    handleBulkRevision(getSubmittedIds(), "제출한")
-);
+// 같은 학생의 체크박스를 모두 맞추고, 아래 바를 보이기/숨기기
+function refreshSelectionUI() {
+    document.querySelectorAll(".sel-check").forEach(cb => {
+        cb.checked = selected.has(Number(cb.dataset.sid));
+    });
+    $("sel-count").innerText = `${selected.size}명 선택`;
+    $("selection-bar").classList.toggle("hidden", selected.size === 0);
+}
+
+function clearSelection() {
+    selected.clear();
+    refreshSelectionUI();
+}
+
+$("btn-sel-clear").addEventListener("click", clearSelection);
+$("btn-sel-none").addEventListener("click", clearSelection);
+
+$("btn-sel-all").addEventListener("click", () => {
+    getSubmittedIds().forEach(id => selected.add(id));
+    refreshSelectionUI();
+});
+
+$("btn-sel-short").addEventListener("click", () => {
+    const ids = getSubmittedIds().filter(id => isBelowMinLength(id));
+    if (ids.length === 0) {
+        toast("글자 수가 부족한 학생이 없어요. (글자 수 제한을 건 질문이 있어야 해요)");
+        return;
+    }
+    ids.forEach(id => selected.add(id));
+    refreshSelectionUI();
+    toast(`${ids.length}명을 선택했어요.`);
+});
+
+$("btn-sel-reset").addEventListener("click", async () => {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    if (!confirm(`선택한 ${ids.length}명의 응답을 초기화할까요?\n\n제출 내역과 점수가 지워지고, 학생은 처음부터 다시 작성할 수 있어요.\n(되돌릴 수 없어요)`)) return;
+    try {
+        await resetStudents(ids);
+        clearSelection();
+        toast(`✅ ${ids.length}명의 응답을 초기화했어요.`);
+    } catch (e) {
+        toast("초기화에 실패했어요. 인터넷 연결을 확인해주세요.");
+    }
+});
+
+$("btn-sel-send").addEventListener("click", async () => {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+
+    const note = currentState !== GAME_STATE.OPEN
+        ? "\n(지금은 설문이 진행 중이 아니라서, 진행 중일 때 학생 화면에 보여요)"
+        : "";
+    if (!confirm(`선택한 ${ids.length}명에게 다시쓰기 요청을 보낼까요?${note}`)) return;
+
+    try {
+        await sendRevisionRequests(ids, getRevisionMessage());
+        $("sel-message").value = "";
+        clearSelection();
+        toast(`✅ ${ids.length}명에게 다시쓰기 요청을 보냈어요.`);
+    } catch (e) {
+        toast("전송에 실패했어요. 인터넷 연결을 확인해주세요.");
+    }
+});
 
 /* =========================
    진행·현황: 응답 초기화 (자동 백업 포함)
@@ -1749,7 +1871,33 @@ function updateModalRevisionButtons(student) {
     const pending = submitted && !!student.revisionRequest;
     $("btn-modal-revision").classList.toggle("hidden", !submitted || pending);
     $("btn-modal-revision-cancel").classList.toggle("hidden", !pending);
+    $("btn-modal-reset-student").classList.toggle("hidden", !submitted);
 }
+
+// 선택한 학생들의 응답·제출 상태·점수를 지우고 처음부터 다시 쓸 수 있게 함
+async function resetStudents(ids) {
+    const updates = {};
+    ids.forEach(id => {
+        updates[`${PATH.RESPONSES}/${id}`] = null;
+        updates[`${PATH.STUDENTS}/${id}/submitted`] = false;
+        updates[`${PATH.STUDENTS}/${id}/score`] = null;
+        updates[`${PATH.STUDENTS}/${id}/totalScorable`] = null;
+        updates[`${PATH.STUDENTS}/${id}/revisionRequest`] = null;
+        updates[`${PATH.STUDENTS}/${id}/nudge`] = null;
+    });
+    await db.ref().update(updates);
+}
+
+$("btn-modal-reset-student").addEventListener("click", async () => {
+    if (!confirm(`#${modalStudentId}번 학생의 응답을 초기화할까요?\n\n제출 내역과 점수가 지워지고, 학생은 처음부터 다시 작성할 수 있어요.\n(되돌릴 수 없어요)`)) return;
+    try {
+        await resetStudents([modalStudentId]);
+        $("student-response-modal").classList.add("hidden");
+        toast(`#${modalStudentId}번 학생의 응답을 초기화했어요.`);
+    } catch (e) {
+        toast("초기화에 실패했어요. 인터넷 연결을 확인해주세요.");
+    }
+});
 
 $("btn-modal-revision").addEventListener("click", async () => {
     const msg = prompt("학생에게 보낼 메시지", getRevisionMessage());
@@ -1860,6 +2008,7 @@ function renderResults() {
                         : ` <span class="answer-wrong">(오답)</span>`;
                 }
                 li.innerHTML = `<span class="num">#${id}</span>${escapeHtml(answer)}${mark}`;
+                li.prepend(makeSelCheck(id));
                 ul.appendChild(li);
             });
             details.appendChild(ul);
