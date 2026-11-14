@@ -875,6 +875,24 @@ async function goOnline() {
     const ref = db.ref(`${PATH.STUDENTS}/${myId}`);
     await ref.update({ status: STUDENT_STATE.ONLINE });
     ref.child("status").onDisconnect().set(STUDENT_STATE.OFFLINE);
+    startHeartbeat();
+}
+
+// 30초마다 "나 아직 있어요" 시간을 기록 (students와 분리된 presence 칸에 저장)
+let heartbeatTimer = null;
+
+function beat() {
+    if (!myId) return;
+    db.ref(`presence/${myId}`).set(firebase.database.ServerValue.TIMESTAMP).catch(() => {});
+}
+
+function startHeartbeat() {
+    beat();
+    if (heartbeatTimer) return;
+    heartbeatTimer = setInterval(beat, 30000);
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) beat();
+    });
 }
 
 /* =========================

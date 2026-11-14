@@ -1004,6 +1004,9 @@ let modalStudentId = null;
 let editingQid = null;
 const openDetails = new Set();
 const selected = new Set(); // 다시쓰기 요청을 보내려고 체크한 학생 번호
+let cachedPresence = {};            // 학생들이 30초마다 남기는 "나 아직 있어요" 시간
+let serverOffset = 0;               // 관리자 컴퓨터 시계와 서버 시계의 차이
+const ONLINE_WINDOW = 90 * 1000;    // 최근 90초 안에 기록이 있으면 접속 중
 
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1035,6 +1038,14 @@ function getSortedQuestionList() {
 function getStudentIds() {
     const max = currentConfig?.studentCount || Infinity;
     return Object.keys(cachedStudents).map(Number).filter(n => n >= 1 && n <= max).sort((a, b) => a - b);
+}
+
+// 로그인 상태이면서 최근 90초 안에 신호가 있어야 '접속 중'
+function isOnline(id) {
+    const s = cachedStudents[id];
+    const seen = cachedPresence[id];
+    if (!s || s.status !== STUDENT_STATE.ONLINE || !seen) return false;
+    return (Date.now() + serverOffset - seen) < ONLINE_WINDOW;
 }
 
 function getSubmittedIds() {
@@ -1129,6 +1140,33 @@ async function initAdmin() {
     listenQuestions();
     listenResponses();
     listenGame();
+    listenPresence();
+}
+
+/* =========================
+   접속 신호(presence) 감시
+========================= */
+function listenPresence() {
+    db.ref(".info/serverTimeOffset").on("value", (snap) => {
+        serverOffset = snap.val() || 0;
+    });
+
+    // 학생들이 자주 기록하므로 5초에 한 번만 화면 갱신 (깜빡임 방지)
+    db.ref("presence").on("value", (snap) => {
+        cachedPresence = snap.val() || {};
+        if (timers.presence) return;
+        timers.presence = setTimeout(() => { timers.presence = null; renderPresence(); }, 5000);
+    });
+
+    // 신호가 끊긴 학생이 시간이 지나면 자동으로 '미접속'이 되도록 주기적으로 갱신
+    setInterval(renderPresence, 15000);
+}
+
+function renderPresence() {
+    renderStatusBar();
+    renderStudentList();
+    renderUnsubmitted();
+    refreshSelectionUI();
 }
 
 async function ensureConfigExists() {
@@ -1211,7 +1249,7 @@ function renderStatusBar() {
     const ids = getStudentIds();
     const total = currentConfig?.studentCount || ids.length;
     const submitted = getSubmittedIds().length;
-    const online = ids.filter(id => cachedStudents[id].status === STUDENT_STATE.ONLINE).length;
+    const online = ids.filter(id => isOnline(id)).length;
 
     $("bar-submit").innerText = `제출 ${submitted}/${total}`;
     $("bar-online").innerText = `접속 ${online}명`;
@@ -1581,7 +1619,7 @@ function renderStudentList() {
     getStudentIds().forEach(id => {
         const s = cachedStudents[id];
         const submitted = s.submitted === true;
-        const online = s.status === STUDENT_STATE.ONLINE;
+        const online = isOnline(id);
 
         const row = document.createElement("div");
         row.className = "student-row";
@@ -1606,7 +1644,7 @@ function renderStudentList() {
             if (s.revisionRequest) text += " · 다시쓰기 요청 중";
         } else if (online) {
             cls = "status-online";
-            text = "작성 중";
+            text = "접속 중";
         }
 
         const statusSpan = document.createElement("span");
@@ -1638,11 +1676,11 @@ function renderUnsubmitted() {
     }
     $("unsubmitted-count").innerText = ids.length === 0
         ? "모든 학생이 제출했어요 🎉"
-        : `미제출 ${ids.length}명 (파란색은 지금 접속해서 작성 중인 학생)`;
+        : `미제출 ${ids.length}명 (파란색은 지금 접속 중인 학생)`;
 
     ids.forEach(id => {
         const chip = document.createElement("span");
-        chip.className = "chip" + (cachedStudents[id].status === STUDENT_STATE.ONLINE ? " online" : "");
+        chip.className = "chip" + (isOnline(id) ? " online" : "");
         chip.innerText = id;
         chips.appendChild(chip);
     });
